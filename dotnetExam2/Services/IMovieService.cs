@@ -10,9 +10,13 @@ namespace dotnetExam2.Services
         // get movie by Id and returns MovieDto or null
         Task<MovieDto?> GetMovieByIdAsync(Guid id);
         Task<IEnumerable<MovieDto>> GetAllMoviesAsync();
-
         // takes an Id and UpdateMovieDto to update the movie
         Task UpdateMovieAsync(Guid id, UpdateMovieDto command);
         Task DeleteMovieAsync(Guid id);
+        Task<IEnumerable<MovieDto>> SearchMoviesByTitleAsync(string title);
+        
+        /// Returns all movies sorted from highest to lowest rating.
+        Task<IEnumerable<MovieDto>> GetMoviesSortedByRatingDescAsync();
+        Task<IEnumerable<MovieDto>> GetMoviesSortedByRatingAscAsync();
     }
 }

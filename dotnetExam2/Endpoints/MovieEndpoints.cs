@@ -7,6 +7,7 @@ namespace dotnetExam2.Endpoints
     {
         public static void MapMovieEndpoints(this IEndpointRouteBuilder routes)
         {
+            // creates new group of endpoints under base path "/api/movies" and tags as "movies"
             var movieApi = routes.MapGroup("/api/movies").WithTags("Movies");
 
             movieApi.MapPost("/", async (IMovieService service, CreateMovieDto command) =>
@@ -21,13 +22,35 @@ namespace dotnetExam2.Endpoints
                 return TypedResults.Ok(movies);
             });
 
-            movieApi.MapGet("/{id}", async (IMovieService service, Guid id) =>
+            movieApi.MapGet("/search", async (IMovieService service, string title) =>
+            {
+                var movies = await service.SearchMoviesByTitleAsync(title);
+                return TypedResults.Ok(movies);
+            });
+
+            movieApi.MapGet("/{id:guid}", async (IMovieService service, Guid id) =>
             {
                 var movie = await service.GetMovieByIdAsync(id);
 
                 return movie is null
                     ? (IResult)TypedResults.NotFound(new { Message = $"Movie with ID {id} not found." })
                     : TypedResults.Ok(movie);
+            });
+
+            movieApi.MapGet("/sort/highest-rating", async (IMovieService service) =>
+            {
+                var movies = await service.GetMoviesSortedByRatingDescAsync();
+
+                return TypedResults.Ok(movies);
+
+            });
+
+            movieApi.MapGet("/sort/lowest-rating", async (IMovieService service) =>
+            {
+                var movies = await service.GetMoviesSortedByRatingAscAsync();
+
+                return TypedResults.Ok(movies);
+
             });
 
             movieApi.MapPut("/{id}", async (IMovieService service, Guid id, UpdateMovieDto command) =>

@@ -5,7 +5,7 @@
         public string Title { get; private set; }
         public string Genre { get; private set; }
         public DateTimeOffset ReleaseDate { get; private set; }
-        public double Rating { get; private set; }
+        public double Rating { get; set; }
 
         // Private constructor for ORM frameworks
         private Movie()
