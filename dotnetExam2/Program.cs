@@ -1,14 +1,16 @@
-using dotnetExam2.Endpoints;
 using dotnetExam2.Persistence;
-using dotnetExam2.Services;
+using dotnetExam2.Repositories;
 using Microsoft.EntityFrameworkCore;
-using Scalar.AspNetCore;
+using dotnetExam2.Mappings;
+using dotnetExam2.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
 builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 // Registering the DbContext with PostgreSQL support
 
@@ -20,7 +22,9 @@ builder.Services.AddDbContext<MovieDbContext>(options =>
 });
 
 // Allows injection of service into endpoints
-builder.Services.AddTransient<IMovieService, MovieService>();
+builder.Services.AddScoped<IMovieRepository, SQLMovieRepository>();
+builder.Services.AddScoped<MovieService>();
+builder.Services.AddAutoMapper(typeof(AutoMapperProfiles).Assembly);
 
 // configuring openAPI
 builder.Services.AddOpenApi();
@@ -37,16 +41,14 @@ await using (var dbContext = serviceScope.ServiceProvider.GetRequiredService<Mov
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
-    app.MapScalarApiReference();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseAuthorization();
 
 app.MapControllers();
 
-// register movie specific endpoints
-app.MapMovieEndpoints();
 
 app.MapGet("/", () => "Hello World!")
    .Produces(200, typeof(string));
