@@ -3,6 +3,7 @@ using dotnetExam2.DTOs;
 using dotnetExam2.Models;
 using dotnetExam2.Persistence;
 using dotnetExam2.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
@@ -12,6 +13,7 @@ namespace dotnetExam2.Controllers
 {   
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class MovieController : ControllerBase
     {
         private readonly MovieDbContext dbContext;

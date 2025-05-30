@@ -3,6 +3,9 @@ using dotnetExam2.Repositories;
 using Microsoft.EntityFrameworkCore;
 using dotnetExam2.Mappings;
 using dotnetExam2.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +24,13 @@ builder.Services.AddDbContext<MovieDbContext>(options =>
     options.UseNpgsql(connectionString);
 });
 
+builder.Services.AddDbContext<AuthDbContext>(options =>
+{
+    // use connection string from appsettings.jso
+    var connectionString = builder.Configuration.GetConnectionString("AuthConnectionString");
+    options.UseNpgsql(connectionString);
+});
+
 // Allows injection of service into endpoints
 builder.Services.AddScoped<IMovieRepository, SQLMovieRepository>();
 builder.Services.AddScoped<MovieService>();
@@ -28,6 +38,20 @@ builder.Services.AddAutoMapper(typeof(AutoMapperProfiles).Assembly);
 
 // configuring openAPI
 builder.Services.AddOpenApi();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options => 
+    options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+    });
 
 var app = builder.Build();
 
@@ -45,6 +69,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
