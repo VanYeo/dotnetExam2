@@ -1,173 +1,62 @@
-﻿using dotnetExam2.DTOs;
-using dotnetExam2.Models;
-using dotnetExam2.Persistence;
-using Microsoft.EntityFrameworkCore;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+﻿using dotnetExam2.Models;
+using dotnetExam2.Repositories;
 
 namespace dotnetExam2.Services
 {
-    public class MovieService : IMovieService
+    public class MovieService
     {
-        private readonly MovieDbContext _dbContext;
-        private readonly ILogger<MovieService> _logger;
+        private readonly IMovieRepository _movieRepository;
 
-        public MovieService(MovieDbContext dbContext, ILogger<MovieService> logger)
+        public MovieService(IMovieRepository movieRepository)
         {
-            _dbContext = dbContext;
-            _logger = logger;
+            _movieRepository = movieRepository;
         }
 
-        // get all movies 
-        public async Task<IEnumerable<MovieDto>> GetAllMoviesAsync()
+        public async Task<List<Movie>> GetAllMoviesAsync(
+            string? filterOn = null, string? filterQuery = null,
+            string? sortBy = null, bool? isAscending = true,
+            int pageNumber = 1, int pageSize = 1000)
         {
-            return await _dbContext.Movies
-                .AsNoTracking()
-                .Select(movie => new MovieDto(
-                    movie.Id,
-                    movie.Title,
-                    movie.Genre,
-                    movie.ReleaseDate,
-                    movie.Rating
-                ))
-                .ToListAsync();
+            return await _movieRepository.GetAllMoviesAsync(
+                filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize);
         }
 
-        // get movie by id
-        public async Task<MovieDto?> GetMovieByIdAsync(Guid id)
+        public async Task<Movie?> GetByIdAsync(Guid id)
         {
-            // access movies table in db via DbContext 
-            var movie = await _dbContext.Movies
-                                   .AsNoTracking()
-                                   .FirstOrDefaultAsync(m => m.Id == id);
-            if (movie == null)
-                return null;
-
-            return new MovieDto(
-                movie.Id,
-                movie.Title,
-                movie.Genre,
-                movie.ReleaseDate,
-                movie.Rating
-            );
+            return await _movieRepository.GetByIdAsync(id);
         }
 
-        // create movie and return movie
-        public async Task<MovieDto> CreateMovieAsync(CreateMovieDto command)
+        public async Task<Movie> CreateAsync(string title, string genre, DateTimeOffset releaseDate, double rating)
         {
-            var movie = Movie.Create
-                (command.Title, command.Genre, command.ReleaseDate, command.Rating);
+            if (rating < 0.0 || rating > 10.0)
+                throw new ArgumentException("Rating must be between 0.0 and 10.0.");
 
-            await _dbContext.Movies.AddAsync(movie);
-            await _dbContext.SaveChangesAsync();
+            if (releaseDate > DateTimeOffset.UtcNow)
+                throw new ArgumentException("Release date cannot be in the future.");
 
-            return new MovieDto(
-               movie.Id,
-               movie.Title,
-               movie.Genre,
-               movie.ReleaseDate,
-               movie.Rating
-            );
+            var movie = Movie.Create(title, genre, releaseDate, rating);
+            return await _movieRepository.CreateAsync(movie);
         }
 
-        // update movie by id
-        public async Task UpdateMovieAsync(Guid id, UpdateMovieDto command)
+        public async Task<Movie?> UpdateAsync(Guid id, Movie updatedMovie)
         {
-            var movieToUpdate = await _dbContext.Movies.FindAsync(id);
-            if (movieToUpdate is null)
-                throw new ArgumentNullException($"Invalid Movie Id.");
-            movieToUpdate.Update(command.Title, command.Genre, command.ReleaseDate, command.Rating);
-            await _dbContext.SaveChangesAsync();
-        }
-
-        // delete movie by id
-        public async Task DeleteMovieAsync(Guid id)
-        {
-            var movieToDelete = await _dbContext.Movies.FindAsync(id);
-            if (movieToDelete != null)
+            var existingMovie = await _movieRepository.GetByIdAsync(id);
+            if (existingMovie == null)
             {
-                _dbContext.Movies.Remove(movieToDelete);
-                await _dbContext.SaveChangesAsync();
+                return null;
             }
+            if (updatedMovie.Rating < 0.0 || updatedMovie.Rating > 10.0)
+                throw new ArgumentException("Rating must be between 0.0 and 10.0.");
+
+            if (updatedMovie.ReleaseDate > DateTimeOffset.UtcNow)
+                throw new ArgumentException("Release date cannot be in the future.");
+
+            return await _movieRepository.UpdateAsync(id, updatedMovie);
         }
 
-        public async Task<IEnumerable<MovieDto>> SearchMoviesByTitleAsync(string title)
+        public async Task<Movie?> DeleteAsync(Guid id)
         {
-            if (string.IsNullOrWhiteSpace(title))
-                return Enumerable.Empty<MovieDto>();
-
-            var movies = await _dbContext.Movies
-                .AsNoTracking()
-                .Where(m => EF.Functions.Like(m.Title.ToLower(), $"%{title.ToLower()}%"))
-                .Select(movie => new MovieDto(
-                    movie.Id,
-                    movie.Title,
-                    movie.Genre,
-                    movie.ReleaseDate,
-                    movie.Rating
-                ))
-                .ToListAsync();
-
-            return movies;
-        }
-
-        //public async Task<IEnumerable<MovieDto>> GetMoviesSortedByRatingDescAsync()
-        //{
-        //    var movies = await _dbContext.Movies
-        //        .AsNoTracking()
-        //        .OrderByDescending(m => m.Rating)
-        //        .Select(movie => new MovieDto(
-        //            movie.Id,
-        //            movie.Title,
-        //            movie.Genre,
-        //            movie.ReleaseDate,
-        //            movie.Rating
-        //        ))
-        //        .ToListAsync();
-
-        //    return movies;
-        //}
-
-        //public async Task<IEnumerable<MovieDto>> GetMoviesSortedByRatingAscAsync()
-        //{
-        //    var movies = await _dbContext.Movies
-        //        .AsNoTracking()
-        //        .OrderBy(m => m.Rating)
-        //        .Select(movie => new MovieDto(
-        //            movie.Id,
-        //            movie.Title,
-        //            movie.Genre,
-        //            movie.ReleaseDate,
-        //            movie.Rating
-        //        ))
-        //        .ToListAsync();
-
-        //    return movies;
-
-        // Helper method to reduce duplication for sorting by rating
-        private async Task<IEnumerable<MovieDto>> GetMoviesSortedByRatingAsync(bool descending)
-        {
-            var query = _dbContext.Movies.AsNoTracking();
-            query = descending ? query.OrderByDescending(m => m.Rating) : query.OrderBy(m => m.Rating);
-
-            return await query
-                .Select(movie => new MovieDto(
-                    movie.Id,
-                    movie.Title,
-                    movie.Genre,
-                    movie.ReleaseDate,
-                    movie.Rating
-                ))
-                .ToListAsync();
-        }
-
-        public Task<IEnumerable<MovieDto>> GetMoviesSortedByRatingDescAsync()
-        {
-            return GetMoviesSortedByRatingAsync(descending: true);
-        }
-
-        public Task<IEnumerable<MovieDto>> GetMoviesSortedByRatingAscAsync()
-        {
-            return GetMoviesSortedByRatingAsync(descending: false);
+            return await _movieRepository.DeleteAsync(id);
         }
     }
 }
