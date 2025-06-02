@@ -13,7 +13,7 @@ namespace dotnetExam2.Controllers
 {   
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+
     public class MovieController : ControllerBase
     {
         private readonly MovieDbContext dbContext;
@@ -30,6 +30,7 @@ namespace dotnetExam2.Controllers
 
         // GET: /api/movie?filterOn=Title&sortBy=Rating&isAscending=true
         [HttpGet]
+        [Authorize(Roles = "Writer,Reader")]
         public async Task<IActionResult> GetAllMovies(
             [FromQuery] string? filterOn, [FromQuery] string? filterQuery, 
             [FromQuery] string? sortBy, [FromQuery] bool? isAscending,
@@ -43,6 +44,7 @@ namespace dotnetExam2.Controllers
         // GET: /api/movie/{id}
         [HttpGet]
         [Route("{id:Guid}")]
+        [Authorize(Roles = "Writer,Reader")]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
             var movieDomain = await movieService.GetByIdAsync(id);
@@ -55,6 +57,7 @@ namespace dotnetExam2.Controllers
         // post: create new movie
         // POST: /api/movie
         [HttpPost]
+        [Authorize(Roles = "Writer")]
         public async Task<IActionResult> Create([FromBody] CreateMovieDto createMovieDto)
         {
             var movieDomainModel = mapper.Map<Movie>(createMovieDto);
@@ -73,6 +76,7 @@ namespace dotnetExam2.Controllers
         // PUT: /api/movie/{id}
         [HttpPut]
         [Route("{id:Guid}")]
+        [Authorize(Roles = "Writer")]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateMovieDto updateMovieDto)
         {
             var movieDomainModel = mapper.Map<Movie>(updateMovieDto);
@@ -88,6 +92,7 @@ namespace dotnetExam2.Controllers
         // DELETE: /api/movie/{id}
         [HttpDelete]
         [Route("{id:guid}")]
+        [Authorize(Roles = "Writer")]
         public async Task<IActionResult> Delete([FromRoute] Guid id)
         {
             var movieDomainModel = await movieService.DeleteAsync(id);

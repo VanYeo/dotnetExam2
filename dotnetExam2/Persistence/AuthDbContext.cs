@@ -12,6 +12,7 @@ namespace dotnetExam2.Persistence
             
         }
 
+        // seeding data
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
